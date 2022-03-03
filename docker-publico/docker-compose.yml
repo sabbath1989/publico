@@ -1,0 +1,74 @@
+version: "3.5"
+
+volumes:
+  mysql_data:
+      driver: local
+
+services:   
+  nginx:
+    image: nginx
+    container_name: nginx
+    user: root
+    ports:
+      - ${PORT_DOCKER}:80
+    volumes:
+      - ${DIRETORIO_APP_DOCKER}:/app
+      - ./docker/nginx:/etc/nginx/conf.d
+    extra_hosts:
+      localhost.erpgmo.com.br: 127.0.0.1
+    environment: 
+      - NGINX_PORT=${PORT_DOCKER}
+    restart: always
+    depends_on:
+      - php-fpm
+      - mysql
+    networks:
+      - compose-network
+
+
+  #sudo apt-get install php7.0-mysql
+  mysql:
+    container_name: mysql
+    image: mysql:8
+    command: --default-authentication-plugin=mysql_native_password
+    restart: always
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_USER: ${DB_USERNAME}
+      #MYSQL_ALLOW_PASSWORD: true
+      SERVICE_TAGS: dev
+      SERVICE_NAME: mysql
+    extra_hosts:
+      localhost.com.br: 127.0.0.1     
+    ports:
+      - '3306:3306'
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - compose-network
+
+  php-fpm:
+    build: docker/php-fpm
+    container_name: php_fpm
+    image: docker_php-fpm
+    volumes:
+      - ${DIRETORIO_APP_DOCKER}:/app
+      - ./docker/php-fpm/conf/custom.ini:/opt/bitnami/php/etc/conf.d/custom.ini
+    environment:
+    #  XDEBUG_CONFIG: remote_host=172.29.0.2
+    #  PHP_IDE_CONFIG: "serverName=xdebug-docker"
+      APP_ENV: local
+      CONTAINER_ROLE: app
+    extra_hosts:
+      localhost.erpgmo.com.br: 127.0.0.1
+    working_dir: /app
+    restart: always
+    networks:
+      - compose-network
+
+
+networks: 
+  compose-network:
+    driver: bridge
